@@ -4,11 +4,12 @@ Projeto de Machine Learning para prever o nível do reservatório UTR-221 com ba
 
 ## Arquivos do Projeto
 
-### Script Principal
+### Notebook / Script Principal
 
 | Arquivo | Descrição |
 | --- | --- |
-| `previsoa221_limpo_zero.py` | Script Python principal. Realiza carregamento e limpeza dos dados, engenharia de features (lags, tendências, variáveis temporais), treinamento e comparação de múltiplos modelos de regressão (Linear, Ridge, Random Forest, Gradient Boosting), exportação dos resultados e inferência autorregressiva para 1 hora após perda de sinal. |
+| `previsao_nivel_221.ipynb` | **Notebook Jupyter** principal (recomendado). Contém todas as etapas divididas em células com cabeçalhos Markdown: carregamento e limpeza dos dados, imputação de zeros, engenharia de features, treinamento e comparação de modelos, exportação dos resultados e inferência autorregressiva para 1 hora após perda de sinal. |
+| `previsoa221_limpo_zero.py` | Script Python equivalente (versão legada). |
 
 ### Dados de Entrada
 
@@ -34,12 +35,21 @@ Projeto de Machine Learning para prever o nível do reservatório UTR-221 com ba
 
 ## Como Executar
 
+### Notebook (recomendado)
+
+```bash
+pip install pandas numpy scikit-learn openpyxl xlrd matplotlib notebook
+jupyter notebook previsao_nivel_221.ipynb
+```
+
+Execute as células em ordem. O notebook exibe resultados intermediários em cada célula e gera os arquivos `.xlsx` de saída.
+
+### Script Python (legado)
+
 ```bash
 pip install pandas numpy scikit-learn openpyxl xlrd matplotlib
 python previsoa221_limpo_zero.py
 ```
-
-O script imprime as métricas (MAE e R²) de cada modelo, o melhor modelo encontrado e as previsões autorregressivas, além de gerar os arquivos `.xlsx` de saída.
 
 ## Features Utilizadas
 
