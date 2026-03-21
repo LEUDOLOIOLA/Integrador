@@ -1,0 +1,60 @@
+DAMNADAS:
+
+1- arquivo de dados vai ser UTR221_25_26.XLS que são 1 ano de dados
+2- retirar as linhas lag zero e exporta o xls. Preencher usando a media geral dos diff e exporta.
+3- produzir os coeficientes
+4- fazer one hot encodding com os dias da semana
+
+-----------------
+
+Feito. Adicionei no previsoa22;py:
+
+Exclusão de linhas com nível zero em NIVEL-UTR-220 ou NIVEL-UTR-221
+Print com a quantidade de zeros removidos e registros restantes
+Exportação dos dados limpos para UTR221_dados_limpos.xlsx (com as 5 colunas originais, sem os zeros)
+
+então todas as linhas com nível 0.0 passam pelo filtro e entram no treinamento.
+
+Isso é um problema porque, no contexto de reservatórios, zero geralmente indica falha de leitura do sensor, não nível real. Esses valores distorcem o modelo.
+
+
+-----------------
+
+O bloco de exclusão de zeros foi substituído por imputação:
+
+Calcula a média geral dos diffs usando apenas valores não-zero de cada coluna de nível
+Para cada zero encontrado, preenche com valor_anterior + média_diff (propagação acumulativa)
+Exporta o resultado para UTR221_zeros_preenchidos.xlsx
+O modelo treina com os dados já preenchidos (sem zeros)
+
+
+Agora a imputação dos zeros usa a média da Tendência (lag1 - lag2, mesma fórmula de Tendencia_Nivel221 e Tendencia_Nivel220) calculada apenas sobre leituras válidas (> 0). Para cada zero, preenche com valor_anterior + média_tendência.
+
+-----------------
+
+calcula os coeficientes:
+
+Adicionei a seção 6 que imprime:
+
+Linear/Ridge Regression: intercepto + coeficiente de cada feature (com sinal +/-)
+Random Forest / Gradient Boosting: importância de cada feature (com barra visual)
+
+-----------------
+
+one hot
+
+Agora vou aplicar todas as mudanças de uma vez: criar as colunas one-hot, atualizar FEATURES, e ajustar os dois pontos de montagem manual (simulação e inferência).
+
+O que é One-Hot Encoding e por que usar aqui:
+
+O DiaSemana original era um número de 0 a 6 (Seg–Dom). O problema é que o modelo interpreta isso como uma escala numérica, como se Domingo (6) fosse "maior" que Segunda (0) — o que não faz sentido.
+
+O one-hot encoding cria 7 colunas binárias (0 ou 1):
+
+Dia	DiaSemana_0	DiaSemana_1	DiaSemana_2	...	DiaSemana_6
+Seg	1	0	0	0	0
+Ter	0	1	0	0	0
+Qua	0	0	1	0	0
+Cada dia ativa apenas sua coluna (valor 1), todas as outras ficam 0. Assim o modelo trata cada dia como uma categoria independente, sem relação de ordem. Isso permite capturar padrões do tipo "às quartas o consumo é diferente" sem viés numérico.
+
+-----------------
