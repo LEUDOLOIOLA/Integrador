@@ -176,31 +176,56 @@ print(f"Acurácia  (100 - MAPE):           {sim_acuracia:.2f}%")
 print("=" * 50)
 
 # ============================================================
-# 8. GRÁFICO: REAL vs SIMULADO
+# 8. GRÁFICO DE COEFICIENTES (IMPORTÂNCIA DAS FEATURES)
+# ============================================================
+cores_barras = ['#2196F3' if i == 0 else '#90CAF9' for i in range(len(importancias))]
+cores_barras_inv = cores_barras[::-1]
+
+fig_coef, ax_coef = plt.subplots(figsize=(10, 5))
+bars = ax_coef.barh(importancias.index[::-1], importancias.values[::-1],
+                    color=cores_barras_inv, edgecolor='white', height=0.6)
+
+# Rótulo de valor em cada barra
+for bar, val in zip(bars, importancias.values[::-1]):
+    ax_coef.text(bar.get_width() + 0.001, bar.get_y() + bar.get_height() / 2,
+                 f'{val:.4f}', va='center', ha='left', fontsize=9)
+
+ax_coef.set_title('Importância das Features — Treino 21/03/2026\n'
+                  '(RandomForest, dados de treino excluem 14h-20h)',
+                  fontsize=12)
+ax_coef.set_xlabel('Importância (Gini)')
+ax_coef.set_xlim(0, importancias.max() * 1.15)
+ax_coef.grid(True, axis='x', alpha=0.3)
+ax_coef.invert_yaxis()
+plt.tight_layout()
+
+output_coef_png = 'coeficientes_treino_21mar.png'
+fig_coef.savefig(output_coef_png, dpi=150, bbox_inches='tight')
+print(f"\nGráfico de coeficientes salvo: {output_coef_png}")
+plt.show()
+
+# ============================================================
+# 9. GRÁFICO COMBINADO: REAL vs SIMULADO  +  COEFICIENTES
 # ============================================================
 # Contexto: 1h antes e 1h depois da janela de teste
 ctx_inicio = TESTE_INICIO - pd.Timedelta(hours=1)
 ctx_fim    = TESTE_FIM    + pd.Timedelta(hours=1)
 dados_ctx  = df.loc[ctx_inicio:ctx_fim].copy()
 
-fig, ax = plt.subplots(figsize=(15, 7))
+fig, (ax, ax2) = plt.subplots(2, 1, figsize=(15, 12),
+                               gridspec_kw={'height_ratios': [2, 1]})
 
-# Nível real completo (incluindo contexto fora da janela)
+# --- Painel superior: série temporal ---
 ax.plot(dados_ctx.index, dados_ctx['NIVEL-UTR-221'],
         label='Nível Real (UTR-221)', color='blue', linewidth=1.8)
-
-# Simulação apenas dentro da janela de teste
 ax.plot(df_sim.index, df_sim['Simulado'],
         label='Nível Simulado (modelo)', color='red',
         linestyle='--', linewidth=2)
-
-# Destaque da janela de teste
 ax.axvspan(TESTE_INICIO, TESTE_FIM, alpha=0.12, color='orange',
            label='Janela de teste (14h-20h)')
 ax.axvline(TESTE_INICIO, color='orange', linestyle=':', linewidth=1.2)
 ax.axvline(TESTE_FIM,    color='orange', linestyle=':', linewidth=1.2)
 
-# Anotação de métricas no gráfico
 metricas_txt = (f"MAE={sim_mae:.4f} m  |  RMSE={sim_rmse:.4f} m\n"
                 f"R²={sim_r2:.4f}  |  Acurácia={sim_acuracia:.2f}%")
 ax.text(0.01, 0.97, metricas_txt, transform=ax.transAxes,
@@ -214,16 +239,29 @@ ax.set_xlabel('Hora')
 ax.set_ylabel('Nível (metros)')
 ax.legend(loc='lower left')
 ax.grid(True, alpha=0.3)
-plt.xticks(rotation=45)
+plt.setp(ax.get_xticklabels(), rotation=45)
+
+# --- Painel inferior: importância das features ---
+bars2 = ax2.barh(importancias.index[::-1], importancias.values[::-1],
+                 color=cores_barras_inv, edgecolor='white', height=0.6)
+for bar, val in zip(bars2, importancias.values[::-1]):
+    ax2.text(bar.get_width() + 0.001, bar.get_y() + bar.get_height() / 2,
+             f'{val:.4f}', va='center', ha='left', fontsize=8)
+ax2.set_title('Coeficientes do Treino (Importância das Features)', fontsize=11)
+ax2.set_xlabel('Importância (Gini)')
+ax2.set_xlim(0, importancias.max() * 1.15)
+ax2.grid(True, axis='x', alpha=0.3)
+ax2.invert_yaxis()
+
 plt.tight_layout()
 
 output_png = 'simulacao_21mar_14h_20h.png'
 plt.savefig(output_png, dpi=150, bbox_inches='tight')
-print(f"\nGráfico salvo: {output_png}")
+print(f"Gráfico combinado salvo: {output_png}")
 plt.show()
 
 # ============================================================
-# 9. EXPORTAR RESULTADOS
+# 10. EXPORTAR RESULTADOS
 # ============================================================
 output_xlsx = 'DF_simulacao_21mar_14h_20h.xlsx'
 df_sim.to_excel(output_xlsx)
