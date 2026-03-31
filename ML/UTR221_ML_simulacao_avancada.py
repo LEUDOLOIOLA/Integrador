@@ -55,34 +55,29 @@ print(f"DF2 (sem target=0):  {len(df2)} linhas  ({len(df) - len(df2)} removidas)
 
 # ============================================================
 # 3. SIMULAÇÃO AVANÇADA — TESTE 01
-# Janela de teste: nível cai para 1.50m (liga) → sobe para 1.68m (desliga)
+# Janela de teste: 06/MAR/2026 das 17h às 21h (período vespertino)
 # Lógica de controle simulada:
 #   - Nível <= 1.50 m → Bomba LIGA (BOMBA_1=1, BOMBA_2=1)
 #   - Nível >= 1.68 m → Bomba DESLIGA (BOMBA_1=0, BOMBA_2=0)
+#   - Entre os limiares → mantém estado atual (histerese)
 # ============================================================
 
 print("\n" + "=" * 65)
-print("   SIMULAÇÃO AVANÇADA — TESTE 01")
+print("   SIMULAÇÃO AVANÇADA — TESTE 01 (17h – 21h)")
 print("=" * 65)
 
 NIVEL_LIGA    = 1.50   # nível que aciona a bomba
 NIVEL_DESLIGA = 1.68   # nível que desliga a bomba
 
-# --- 3.1 Identificar a janela de teste ---
-# Primeira vez que o nível REAL cai para <= 1.50 (não-zero)
+# --- 3.1 Definir a janela de teste: 06/MAR/2026 17:00 – 21:00 ---
+inicio_teste = pd.Timestamp('2026-03-06 17:00:00')
+fim_teste    = pd.Timestamp('2026-03-06 21:00:00')
+
 nivel = df['NIVEL-UTR-221']
-candidatos_liga = df[(nivel <= NIVEL_LIGA) & (nivel > 0)]
-inicio_teste = candidatos_liga.index.min()
 
-# Primeira vez que o nível REAL sobe para >= 1.68 APÓS o início
-candidatos_desliga = df[(nivel >= NIVEL_DESLIGA) & (df.index > inicio_teste)]
-fim_teste = candidatos_desliga.index.min()
-
-print(f"Janela de teste identificada automaticamente:")
-print(f"  Início (nível <= {NIVEL_LIGA}m): {inicio_teste}  "
-      f"→ nível real = {nivel.loc[inicio_teste]:.2f}m")
-print(f"  Fim    (nível >= {NIVEL_DESLIGA}m): {fim_teste}  "
-      f"→ nível real = {nivel.loc[fim_teste]:.2f}m")
+print(f"Janela de teste (período 17h–21h):")
+print(f"  Início: {inicio_teste}  → nível real = {nivel.loc[inicio_teste]:.2f}m")
+print(f"  Fim:    {fim_teste}  → nível real = {nivel.loc[fim_teste]:.2f}m")
 print(f"  Duração: {fim_teste - inicio_teste}  |  "
       f"Linhas no teste: {len(df.loc[inicio_teste:fim_teste])}")
 
@@ -225,7 +220,7 @@ else:
                 label='Janela de Teste (removida do treino)')
     ax1.set_ylabel('Nível (metros)')
     ax1.set_title(
-        f'Simulação Avançada — Teste 01\n'
+        f'Simulação Avançada — Teste 01 (Período 17h–21h)\n'
         f'Janela: {inicio_teste.strftime("%d/%m/%Y %H:%M")} a '
         f'{fim_teste.strftime("%d/%m/%Y %H:%M")}\n'
         f'Lógica: Liga ≤ {NIVEL_LIGA}m  |  Desliga ≥ {NIVEL_DESLIGA}m',
