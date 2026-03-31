@@ -63,19 +63,19 @@ print(f"DF2 (sem target=0):  {len(df2)} linhas  ({len(df) - len(df2)} removidas)
 # ============================================================
 
 print("\n" + "=" * 65)
-print("   SIMULAÇÃO AVANÇADA — TESTE 01 (17h – 21h)")
+print("   SIMULAÇÃO AVANÇADA — TESTE 01 (14h – 20h)")
 print("=" * 65)
 
 NIVEL_LIGA    = 1.50   # nível que aciona a bomba
 NIVEL_DESLIGA = 1.68   # nível que desliga a bomba
 
-# --- 3.1 Definir a janela de teste: 06/MAR/2026 17:00 – 21:00 ---
-inicio_teste = pd.Timestamp('2026-03-06 17:00:00')
-fim_teste    = pd.Timestamp('2026-03-06 21:00:00')
+# --- 3.1 Definir a janela de teste: 21/MAR/2026 14:00 – 20:00 ---
+inicio_teste = pd.Timestamp('2026-03-21 14:00:00')
+fim_teste    = pd.Timestamp('2026-03-21 20:00:00')
 
 nivel = df['NIVEL-UTR-221']
 
-print(f"Janela de teste (período 17h–21h):")
+print(f"Janela de teste (período 14h–20h):")
 print(f"  Início: {inicio_teste}  → nível real = {nivel.loc[inicio_teste]:.2f}m")
 print(f"  Fim:    {fim_teste}  → nível real = {nivel.loc[fim_teste]:.2f}m")
 print(f"  Duração: {fim_teste - inicio_teste}  |  "
@@ -220,7 +220,7 @@ else:
                 label='Janela de Teste (removida do treino)')
     ax1.set_ylabel('Nível (metros)')
     ax1.set_title(
-        f'Simulação Avançada — Teste 01 (Período 17h–21h)\n'
+        f'Simulação Avançada — Teste 01 (Período 14h–20h)\n'
         f'Janela: {inicio_teste.strftime("%d/%m/%Y %H:%M")} a '
         f'{fim_teste.strftime("%d/%m/%Y %H:%M")}\n'
         f'Lógica: Liga ≤ {NIVEL_LIGA}m  |  Desliga ≥ {NIVEL_DESLIGA}m',
