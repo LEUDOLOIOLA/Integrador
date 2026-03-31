@@ -66,8 +66,8 @@ print("\n" + "=" * 65)
 print("   SIMULAÇÃO AVANÇADA — TESTE 01 (14h – 20h)")
 print("=" * 65)
 
-NIVEL_LIGA    = 1.50   # nível que aciona a bomba
-NIVEL_DESLIGA = 1.68   # nível que desliga a bomba
+NIVEL_LIGA    = 1.55   # nível que aciona a bomba
+NIVEL_DESLIGA = 1.67   # nível que desliga a bomba
 
 # --- 3.1 Definir a janela de teste: 21/MAR/2026 14:00 – 20:00 ---
 inicio_teste = pd.Timestamp('2026-03-21 14:00:00')
