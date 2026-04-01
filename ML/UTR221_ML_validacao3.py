@@ -5,11 +5,10 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
-import random
 
 # 1. CARREGAMENTO
 # Carregar urt220 (preditores)
-df220 = pd.read_excel('urt220.xlsx', usecols=['E3TIMESTAMP', 'CMB_220_S1A_EST', 'CMB_220_S1B_EST', 'PIT_220_S01_000'])
+df220 = pd.read_excel('urt220.xlsx', usecols=['E3TIMESTAMP', 'CMB_220_S2A_EST', 'CMB_220_S2B_EST', 'LIT_220_RA2_000'])
 # Formato no Excel: "01/02/26 00:00:27,954000000" → trocar vírgula por ponto, truncar p/ 6 dígitos
 ts220 = (df220['E3TIMESTAMP'].astype(str)
          .str.replace(',', '.', regex=False)
@@ -37,27 +36,28 @@ df = df.loc['2026-02-28 17:30:38':]
 
 # Renomear colunas para manter compatibilidade com o modelo
 df = df.rename(columns={
-    'CMB_220_S1A_EST': 'BOMBA_1',
-    'CMB_220_S1B_EST': 'BOMBA_2',
-    'PIT_220_S01_000': 'NIVEL-UTR-220',
-    'PIT_221_S01_000': 'NIVEL-UTR-221'
+    'CMB_220_S2A_EST': 'BOMBA_1',
+    'CMB_220_S2B_EST': 'BOMBA_2',
+    'LIT_220_RA2_000': 'NIVEL-UTR-220',
+    'PIT_221_S01_000': 'PRESSAO-UTR-221'
 })
 
 # 2. ENGENHARIA DE FEATURES
 # Criando o alvo: o nível que acontecerá daqui a 1 min (próxima linha)
-df['target'] = df['NIVEL-UTR-221'].shift(-1)
+df['target'] = df['PRESSAO-UTR-221'].shift(-1)
 
 # Criando Lags (o que aconteceu 1 min atrás)
-df['nivel_221_lag1'] = df['NIVEL-UTR-221'].shift(1)
+
+df['nivel_221_lag1'] = df['PRESSAO-UTR-221'].shift(1)
 df['nivel_220_lag1'] = df['NIVEL-UTR-220'].shift(1)
 
 # Tendência baseada em dados passados
 # Variação entre os dois últimos registros (delta 1 min)
-df['tendencia_1min'] = df['NIVEL-UTR-221'].shift(1) - df['NIVEL-UTR-221'].shift(2)
+df['tendencia_1min'] = df['PRESSAO-UTR-221'].shift(1) - df['PRESSAO-UTR-221'].shift(2)
 # Variação na última hora (60 períodos de 1 min)
-df['tendencia_1h'] = df['NIVEL-UTR-221'].shift(1) - df['NIVEL-UTR-221'].shift(60)
+df['tendencia_1h'] = df['PRESSAO-UTR-221'].shift(1) - df['PRESSAO-UTR-221'].shift(60)
 # Média móvel das últimas 60 leituras (1 hora)
-df['media_movel_1h'] = df['NIVEL-UTR-221'].shift(1).rolling(window=60).mean()
+df['media_movel_1h'] = df['PRESSAO-UTR-221'].shift(1).rolling(window=60).mean()
 
 # Extraindo hora
 df['hora'] = df.index.hour
@@ -68,8 +68,8 @@ df = df.dropna()
 # DF2: cópia sem linhas onde target é zero e sem transições (lag1=0)
 df2 = df[(df['target'] != 0) & (df['nivel_221_lag1'] != 0)].copy()
 
-# DF3: linhas onde NIVEL-UTR-221 é zero
-df3 = df[df['NIVEL-UTR-221'] == 0].copy()
+# DF3: linhas onde PRESSAO-UTR-221 é zero
+df3 = df[df['PRESSAO-UTR-221'] == 0].copy()
 
 # 3. DEFINIÇÃO DE FEATURES E TARGET
 features = ['BOMBA_1', 'BOMBA_2', 'nivel_220_lag1', 'nivel_221_lag1', 'hora',
@@ -123,47 +123,9 @@ print(f"MAPE (Erro % Médio Abs.):    {mape:.2f}%")
 print(f"Acurácia (100 - MAPE):       {acuracia:.2f}%")
 print("=" * 40)
 
-# 1. PREPARAÇÃO DOS DADOS PARA O GRÁFICO
-# Criamos um DataFrame para comparar os valores reais com as previsões
-resultados = pd.DataFrame({
-    'Real': y_test.values,
-    'Previsto': previsoes
-}, index=y_test.index)
-
-# 2. SELEÇÃO DA JANELA ALEATÓRIA
-# 12 horas = 720 períodos de 1 minuto
-janela = 720 
-
-# Escolhemos um ponto de início aleatório dentro do conjunto de teste
-total_pontos = len(resultados)
-inicio = random.randint(0, total_pontos - janela)
-fim = inicio + janela
-
-# Recortamos os dados para essas 12 horas específicas
-exemplo_12h = resultados.iloc[inicio:fim]
-
-# 3. CRIAÇÃO DO GRÁFICO
-plt.figure(figsize=(12, 6))
-plt.plot(exemplo_12h.index, exemplo_12h['Real'], label='Nível Real (UTR-221)', color='blue', marker='o')
-plt.plot(exemplo_12h.index, exemplo_12h['Previsto'], label='Previsão do Modelo', color='red', linestyle='--', marker='x')
-
-# Formatação e Legendas
-plt.title(f'Simulação: Real vs Previsão (Janela de 12h iniciando em {exemplo_12h.index[0]})')
-plt.xlabel('Hora da Medição')
-plt.ylabel('Nível (metros)')
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.xticks(rotation=45)
-plt.tight_layout()
-
-# Guardar ou mostrar o gráfico
-plt.savefig('comparativo_12h.png')
-print(f"Gráfico gerado para o período: {exemplo_12h.index[0]} até {exemplo_12h.index[-1]}")
-plt.show()
-
 # ============================================================
 # 8. VALIDAÇÃO RECURSIVA (DF4)
-# Nos horários do DF3 (NIVEL-UTR-221=0), simula passo a passo
+# Nos horários do DF3 (PRESSAO-UTR-221=0), simula passo a passo
 # onde cada previsão alimenta o próximo passo
 # ============================================================
 
@@ -185,7 +147,7 @@ for b_inicio, b_fim in zip(blocos_inicio, blocos_fim):
     if len(bloco) == 0:
         continue
 
-    anteriores = df.loc[df.index < b_inicio, 'NIVEL-UTR-221']
+    anteriores = df.loc[df.index < b_inicio, 'PRESSAO-UTR-221']
     if len(anteriores) < 60:
         continue
 
@@ -212,7 +174,7 @@ for b_inicio, b_fim in zip(blocos_inicio, blocos_fim):
 
         registros_df4.append({
             'Data': idx,
-            'Real': row['NIVEL-UTR-221'],
+            'Real': row['PRESSAO-UTR-221'],
             'Target_Real': row['target'],
             'Previsto_Recursivo': round(previsao, 4),
             'BOMBA_1': row['BOMBA_1'],
@@ -238,128 +200,12 @@ print("\nArquivos Excel gerados: DF2_sem_zeros.xlsx, DF3_nivel_zero.xlsx, DF4_va
 print("=" * 50)
 
 # ============================================================
-# 9. SIMULAÇÃO DE FALHA DE COMUNICAÇÃO UTR-221 (06/mar 06:42-07:42)
-# Simula perda de sinal: o modelo prevê recursivamente
-# o nível usando apenas dados da UTR-220 e bombas
-# ============================================================
-
-print("\n" + "=" * 60)
-print("   SIMULAÇÃO: FALHA DE COMUNICAÇÃO UTR-221 (06/MAR 06:42-07:42)")
-print("=" * 60)
-
-falha_inicio = pd.Timestamp('2026-03-06 06:42:00')
-falha_fim = pd.Timestamp('2026-03-06 07:42:00')
-
-print(f"Período da simulação: {falha_inicio} até {falha_fim}")
-
-# Janela de contexto para o gráfico: 1h antes e 1h depois
-janela_inicio = falha_inicio - pd.Timedelta(hours=1)
-janela_fim = falha_fim + pd.Timedelta(hours=1)
-
-dados_janela = df.loc[janela_inicio:janela_fim].copy()
-dados_falha = df.loc[falha_inicio:falha_fim].copy()
-
-print(f"Dados na janela de contexto: {len(dados_janela)} registros")
-print(f"Dados no período de falha: {len(dados_falha)} registros")
-
-# Recuperar histórico antes da falha (últimos 60 min reais)
-dados_antes = df[df.index < falha_inicio]
-
-if len(dados_antes) < 60 or len(dados_falha) == 0:
-    print("AVISO: Dados insuficientes para simulação nesse intervalo.")
-else:
-    historico_sim = list(dados_antes['NIVEL-UTR-221'].iloc[-60:].values)
-    registros_sim = []
-
-    for idx, row in dados_falha.iterrows():
-        nivel_lag1 = historico_sim[-1]
-        nivel_lag2 = historico_sim[-2]
-        nivel_lag60 = historico_sim[-60]
-
-        feat_values = {
-            'BOMBA_1': row['BOMBA_1'],
-            'BOMBA_2': row['BOMBA_2'],
-            'nivel_220_lag1': row['nivel_220_lag1'],
-            'nivel_221_lag1': nivel_lag1,
-            'hora': idx.hour,
-            'tendencia_1min': nivel_lag1 - nivel_lag2,
-            'tendencia_1h': nivel_lag1 - nivel_lag60,
-            'media_movel_1h': np.mean(historico_sim[-60:]),
-        }
-
-        X_sim = pd.DataFrame([feat_values])[features]
-        previsao_sim = max(modelo.predict(X_sim)[0], 0)
-
-        registros_sim.append({
-            'Data': idx,
-            'Real': row['NIVEL-UTR-221'],
-            'Previsto_Recursivo': round(previsao_sim, 4),
-            'BOMBA_1': row['BOMBA_1'],
-            'BOMBA_2': row['BOMBA_2'],
-            'NIVEL-UTR-220': row['NIVEL-UTR-220'],
-        })
-
-        historico_sim.append(previsao_sim)
-
-    df_sim = pd.DataFrame(registros_sim).set_index('Data')
-
-    # Métricas da simulação
-    sim_real = df_sim['Real']
-    sim_prev = df_sim['Previsto_Recursivo']
-    sim_mae = mean_absolute_error(sim_real, sim_prev)
-    sim_rmse = np.sqrt(mean_squared_error(sim_real, sim_prev))
-    sim_r2 = r2_score(sim_real, sim_prev)
-    mask_nz = sim_real != 0
-    sim_mape = np.mean(np.abs((sim_real[mask_nz] - sim_prev[mask_nz]) / sim_real[mask_nz])) * 100 if mask_nz.sum() > 0 else 0
-    sim_acuracia = 100 - sim_mape
-
-    print("\n--- Métricas da Simulação de Falha ---")
-    print(f"MAE:       {sim_mae:.4f} metros")
-    print(f"RMSE:      {sim_rmse:.4f} metros")
-    print(f"R²:        {sim_r2:.4f}")
-    print(f"MAPE:      {sim_mape:.2f}%")
-    print(f"Acurácia:  {sim_acuracia:.2f}%")
-
-    # Gráfico da simulação
-    plt.figure(figsize=(14, 7))
-    plt.plot(dados_janela.index, dados_janela['NIVEL-UTR-221'],
-             label='Nível Real (UTR-221)', color='blue', linewidth=1.5)
-    plt.plot(df_sim.index, df_sim['Previsto_Recursivo'],
-             label='Previsão Recursiva (falha simulada)', color='red',
-             linestyle='--', linewidth=2)
-    plt.axvspan(falha_inicio, falha_fim, alpha=0.15, color='red',
-                label='Período sem comunicação (06:42-07:42)')
-
-    plt.title('Simulação de Falha UTR-221 — 06/MAR/2026 (06:42 às 07:42)')
-    plt.xlabel('Hora')
-    plt.ylabel('Nível (metros)')
-    plt.legend(loc='best')
-    plt.grid(True, alpha=0.3)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig('simulacao_falha_06mar_0642_0742.png')
-    print("\nGráfico salvo: simulacao_falha_06mar_0642_0742.png")
-    plt.show()
-
-    # Exportar simulação
-    df_sim.to_excel('DF5_simulacao_falha_06mar_0642_0742.xlsx')
-    print("Arquivo Excel gerado: DF5_simulacao_falha_06mar_0642_0742.xlsx")
-
-    # Tabela resumo
-    print(f"\n{'Hora':>20s} | {'Real':>10s} | {'Previsto':>10s} | {'Erro':>10s}")
-    print("-" * 60)
-    for idx, row in df_sim.iterrows():
-        erro = abs(row['Real'] - row['Previsto_Recursivo'])
-        print(f"{str(idx):>20s} | {row['Real']:10.4f} | {row['Previsto_Recursivo']:10.4f} | {erro:10.4f}")
-    print("=" * 60)
-
-# ============================================================
-# 10. PREVISÃO FUTURA 2 HORAS (A PARTIR DO ÚLTIMO TIMESTAMP)
-# Predição recursiva para os próximos 120 minutos (2h)
+# 9. PREVISÃO FUTURA 7 HORAS (A PARTIR DO ÚLTIMO TIMESTAMP)
+# Predição recursiva para os próximos 420 minutos (7h)
 # ============================================================
 
 print("\n" + "=" * 70)
-print("   PREVISÃO FUTURA: PRÓXIMAS 3 HORAS (180 min)")
+print("   PREVISÃO FUTURA: PRÓXIMAS 7 HORAS (420 min)")
 print("=" * 70)
 
 # Último timestamp real
@@ -367,13 +213,17 @@ ultimo_ts = df.index[-1]
 print(f"Último dado real: {ultimo_ts}")
 
 # Configurações
-passos_futuro = 180  # 3 horas = 180 minutos
-historico_inicial = list(df['NIVEL-UTR-221'].tail(60).values)  # Última 1h real
+passos_futuro = 420  # 7 horas = 420 minutos
+historico_inicial = list(df['PRESSAO-UTR-221'].tail(60).values)  # Última 1h real
 
-# Valores constantes para predição futura (últimos conhecidos)
-bomba1_const = df['BOMBA_1'].iloc[-1]
-bomba2_const = df['BOMBA_2'].iloc[-1]
+# Valores iniciais para predição futura (últimos conhecidos)
+bomba1 = df['BOMBA_1'].iloc[-1]
+bomba2 = df['BOMBA_2'].iloc[-1]
 nivel220_const = df['NIVEL-UTR-220'].iloc[-1]
+
+# Setpoints de controle das bombas (nível UTR-221)
+SETPOINT_ALTO = 1.68   # Nível em que as bombas desligam
+SETPOINT_BAIXO = 1.55  # Nível em que as bombas religam
 
 registros_futuro = []
 
@@ -386,9 +236,15 @@ for passo in range(1, passos_futuro + 1):
     nivel_lag2 = historico_inicial[-2]
     nivel_lag60 = historico_inicial[-60] if len(historico_inicial) >= 60 else historico_inicial[0]
     
+    # Lógica de controle das bombas (faltou o rodízio)
+    if nivel_lag1 >= SETPOINT_ALTO:
+        bomba1, bomba2 = 0, 0  # Desliga bombas
+    elif nivel_lag1 <= SETPOINT_BAIXO:
+        bomba1, bomba2 = 1, 1  # Liga bombas
+    
     feat_values = {
-        'BOMBA_1': bomba1_const,
-        'BOMBA_2': bomba2_const,
+        'BOMBA_1': bomba1,
+        'BOMBA_2': bomba2,
         'nivel_220_lag1': nivel220_const,
         'nivel_221_lag1': nivel_lag1,
         'hora': proximo_ts.hour,
@@ -402,7 +258,9 @@ for passo in range(1, passos_futuro + 1):
     
     registros_futuro.append({
         'Data': proximo_ts,
-        'Previsto_Futuro': round(previsao, 4),
+        'Previsto_Futuro': round(previsao, 2),
+        'BOMBA_1': bomba1,
+        'BOMBA_2': bomba2,
         'Passo': passo,
         'Hora': proximo_ts.strftime('%H:%M'),
     })
@@ -412,35 +270,35 @@ for passo in range(1, passos_futuro + 1):
 
 # Criar DataFrame futuro
 df_futuro = pd.DataFrame(registros_futuro).set_index('Data')
-print(f"Previsão gerada: {len(df_futuro)} passos (3h futuras)")
+print(f"Previsão gerada: {len(df_futuro)} passos (7h futuras)")
 print(df_futuro[['Previsto_Futuro', 'Hora']].head(10))
 print(df_futuro[['Previsto_Futuro', 'Hora']].tail(10))
 
 # Exportar
-df_futuro.to_excel('DF6_futuro_3h.xlsx')
-print("✅ Arquivo gerado: DF6_futuro_3h.xlsx")
+df_futuro.to_excel('DF6_futuro_7h.xlsx')
+print("✅ Arquivo gerado: DF6_futuro_7h.xlsx")
 
 # Gráfico: última 1h real + 2h futuro
 janela_grafico_inicio = ultimo_ts - pd.Timedelta(hours=1)
 dados_grafico = df.loc[janela_grafico_inicio:ultimo_ts].copy()
 
 plt.figure(figsize=(15, 8))
-plt.plot(dados_grafico.index, dados_grafico['NIVEL-UTR-221'], 
+plt.plot(dados_grafico.index, dados_grafico['PRESSAO-UTR-221'], 
          label='Última 1h Real', color='blue', linewidth=2)
 plt.plot(df_futuro.index, df_futuro['Previsto_Futuro'], 
-         label='Previsão 3h Futuras', color='green', linewidth=2, linestyle='--')
+         label='Previsão 7h Futuras', color='green', linewidth=2, linestyle='--')
 
 plt.axvline(ultimo_ts, color='red', linestyle=':', alpha=0.7, label='Limite dos dados reais')
 
-plt.title(f'Previsão Futura 3 Horas\nA partir de {ultimo_ts}', fontsize=14)
+plt.title(f'Previsão Futura 7 Horas\nA partir de {ultimo_ts}', fontsize=14)
 plt.xlabel('Timestamp')
-plt.ylabel('Nível (metros)')
+plt.ylabel('Pressão (BAR)')
 plt.legend()
 plt.grid(True, alpha=0.3)
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig('previsao_futura_3h.png', dpi=300, bbox_inches='tight')
-print("✅ Gráfico salvo: previsao_futura_3h.png")
+plt.savefig('previsao_futura_7h.png', dpi=300, bbox_inches='tight')
+print("✅ Gráfico salvo: previsao_futura_7h.png")
 plt.show()
 
 print("=" * 70)

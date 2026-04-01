@@ -9,7 +9,7 @@ import random
 
 # 1. CARREGAMENTO
 # Carregar urt220 (preditores)
-df220 = pd.read_excel('urt220.xlsx', usecols=['E3TIMESTAMP', 'CMB_220_S1A_EST', 'CMB_220_S1B_EST', 'PIT_220_S01_000'])
+df220 = pd.read_excel('urt220.xlsx', usecols=['E3TIMESTAMP', 'CMB_220_S2A_EST', 'CMB_220_S2B_EST', 'LIT_220_RA2_000'])
 # Formato no Excel: "01/02/26 00:00:27,954000000" → trocar vírgula por ponto, truncar p/ 6 dígitos
 ts220 = (df220['E3TIMESTAMP'].astype(str)
          .str.replace(',', '.', regex=False)
@@ -37,9 +37,9 @@ df = df.loc['2026-02-28 17:30:38':]
 
 # Renomear colunas para manter compatibilidade com o modelo
 df = df.rename(columns={
-    'CMB_220_S1A_EST': 'BOMBA_1',
-    'CMB_220_S1B_EST': 'BOMBA_2',
-    'PIT_220_S01_000': 'NIVEL-UTR-220',
+    'CMB_220_S2A_EST': 'BOMBA_1',
+    'CMB_220_S2B_EST': 'BOMBA_2',
+    'LIT_220_RA2_000': 'NIVEL-UTR-220',
     'PIT_221_S01_000': 'NIVEL-UTR-221'
 })
 
@@ -374,8 +374,8 @@ else:
     print("=" * 60)
 
 # ============================================================
-# 10. PREVISÃO FUTURA 2 HORAS (A PARTIR DO ÚLTIMO TIMESTAMP)
-# Predição recursiva para os próximos 120 minutos (2h)
+# 10. PREVISÃO FUTURA 3 HORAS (A PARTIR DO ÚLTIMO TIMESTAMP)
+# Predição recursiva para os próximos 180 minutos (3h)
 # ============================================================
 
 print("\n" + "=" * 70)
