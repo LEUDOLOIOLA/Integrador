@@ -57,24 +57,24 @@ df = df.rename(columns={
 # ----------------------------------------------------------------
 # 2. ENGENHARIA DE FEATURES
 # ----------------------------------------------------------------
-df['target']          = df['PRESSAO_221'].shift(-1)
-df['nivel_221_lag1']  = df['PRESSAO_221'].shift(1)
-df['nivel_220_lag1']  = df['NIVEL_220'].shift(1)
-df['bomba1_lag1']     = df['BOMBA_1'].shift(1)
-df['bomba2_lag1']     = df['BOMBA_2'].shift(1)
-df['tendencia_1min']  = df['PRESSAO_221'].shift(1) - df['PRESSAO_221'].shift(2)
-df['tendencia_1h']    = df['PRESSAO_221'].shift(1) - df['PRESSAO_221'].shift(60)
-df['media_movel_1h']  = df['PRESSAO_221'].shift(1).rolling(window=60).mean()
-df['hora']            = df.index.hour
+df['target']            = df['PRESSAO_221'].shift(-1)
+df['pressao_221_lag1']  = df['PRESSAO_221'].shift(1)
+df['nivel_220_lag1']    = df['NIVEL_220'].shift(1)
+df['bomba1_lag1']       = df['BOMBA_1'].shift(1)
+df['bomba2_lag1']       = df['BOMBA_2'].shift(1)
+df['tendencia_1min']    = df['PRESSAO_221'].shift(1) - df['PRESSAO_221'].shift(2)
+df['tendencia_1h']      = df['PRESSAO_221'].shift(1) - df['PRESSAO_221'].shift(60)
+df['media_movel_1h']    = df['PRESSAO_221'].shift(1).rolling(window=60).mean()
+df['hora']              = df.index.hour
 df = df.dropna()
 
 # Remover períodos com pressão = 0
-df2 = df[(df['target'] != 0) & (df['nivel_221_lag1'] != 0)].copy()
+df2 = df[(df['target'] != 0) & (df['pressao_221_lag1'] != 0)].copy()
 
 FEATURES = [
     'bomba1_lag1', 'bomba2_lag1',
     'nivel_220_lag1',
-    'nivel_221_lag1',
+    'pressao_221_lag1',
     'hora',
     'tendencia_1min',
     'tendencia_1h',
@@ -214,28 +214,28 @@ for passo in range(1, PASSOS + 1):
     ts_prev = horario_falha + pd.Timedelta(minutes=passo)
 
     # Valores de lag para este passo
-    niv_lag1 = historico[-1]
-    niv_lag2 = historico[-2]
-    niv_lag60 = historico[-60] if len(historico) >= 60 else historico[0]
-    med_1h   = float(np.mean(historico[-60:])) if len(historico) >= 60 else float(np.mean(historico))
-    tend_1min = niv_lag1 - niv_lag2
-    tend_1h   = niv_lag1 - niv_lag60
+    pressao_lag1  = historico[-1]
+    pressao_lag2  = historico[-2]
+    pressao_lag60 = historico[-60] if len(historico) >= 60 else historico[0]
+    med_1h        = float(np.mean(historico[-60:])) if len(historico) >= 60 else float(np.mean(historico))
+    tend_1min     = pressao_lag1 - pressao_lag2
+    tend_1h       = pressao_lag1 - pressao_lag60
 
     # Lógica de controle das bombas
-    if niv_lag1 >= SETPOINT_ALTO:
+    if pressao_lag1 >= SETPOINT_ALTO:
         bomba1, bomba2 = 0.0, 0.0
-    elif niv_lag1 <= SETPOINT_BAIXO:
+    elif pressao_lag1 <= SETPOINT_BAIXO:
         bomba1, bomba2 = 1.0, 1.0
 
     feat = {
-        'bomba1_lag1':    bomba1,
-        'bomba2_lag1':    bomba2,
-        'nivel_220_lag1': nivel_220_lag1,
-        'nivel_221_lag1': niv_lag1,
-        'hora':           ts_prev.hour,
-        'tendencia_1min': tend_1min,
-        'tendencia_1h':   tend_1h,
-        'media_movel_1h': med_1h,
+        'bomba1_lag1':     bomba1,
+        'bomba2_lag1':     bomba2,
+        'nivel_220_lag1':  nivel_220_lag1,
+        'pressao_221_lag1': pressao_lag1,
+        'hora':            ts_prev.hour,
+        'tendencia_1min':  tend_1min,
+        'tendencia_1h':    tend_1h,
+        'media_movel_1h':  med_1h,
     }
 
     X_pred = pd.DataFrame([feat])[FEATURES]
